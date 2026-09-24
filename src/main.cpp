@@ -23,6 +23,8 @@ DallasTemperature sensors(&oneWire);
 int currentScreen       = 0;
 const int TOTAL_SCREENS = 2; // Screen 0: Weather, Screen 1: BTC
 
+const char* pythonDashboardUrl = "http://192.168.1.61:5000/api/reading";
+
 // Button Debounce
 unsigned long lastDebounceTime      = 0;
 const unsigned long DEBOUNCE_DELAY  = 50;
@@ -155,6 +157,26 @@ void sendTemperatureToServer() {
       Serial.printf("Error sending POST: %d\n", httpResponseCode);
     }
     http.end();
+  }
+
+  if (http.begin(client, pythonDashboardUrl)) {
+  http.setTimeout(5000);
+  http.addHeader("Content-Type", "application/json");
+
+  String jsonPayload = "{\"indoor\":" + String(currentIndoorTemp, 2) +
+                         ",\"outdoor\":" + String(currentOutdoorTemp, 2) +
+                         ",\"wind\":" + String(currentWind, 2) +
+                         ",\"delta_t\":" + String(currentDeltaT, 2) + "}";
+
+  int httpResponseCode = http.POST(jsonPayload);
+  Serial.printf("Server reponse: %d\n", httpResponseCode);
+  if (httpResponseCode == 201) {
+    Serial.printf("Logged to Python Dashboard: Indoor=%.1f, Outdoor=%.1f, DeltaT=%.1f, Wind=%.1f\n", 
+                  currentIndoorTemp, currentOutdoorTemp, currentDeltaT, currentWind);
+  } else {
+    Serial.printf("Error sending POST: %d\n", httpResponseCode);
+  }
+  http.end();
   }
 }
 
